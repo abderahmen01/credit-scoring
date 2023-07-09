@@ -1,0 +1,72 @@
+import numpy as np
+import rsfs
+from scipy.stats import mode
+
+from sklearn.base import BaseEstimator, ClassifierMixin
+from sklearn.cluster import FeatureAgglomeration
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+
+
+class RotationForestClassifier(BaseEstimator, ClassifierMixin):
+    def __init__(self, k=10, n_features=5, n_estimators=10):
+        self.k = k
+        self.n_features = n_features
+        self.n_estimators = n_estimators
+
+        self.rsfs_params = {
+            'RSFS': {
+                'Classifier': 'KNN',
+                'Classifier Properties': {
+                    'n_neighbors': 3,
+                    'weights': 'distance'
+                },
+                'Dummy feats': 25,
+                'delta': 0.05,
+                'maxiters': 1000,
+                'fn': 'sqrt',
+                'cutoff': 0.99,
+                'Threshold': 50,
+            },
+            'Verbose': 1
+        }
+        self.rf_ensemble = []
+
+    def fit(self, X, y):
+
+        for a in range(self.n_estimators):
+            rf = RandomForestClassifier(max_features=self.n_features)
+            data_train, data_test, label_train, label_test = train_test_split(
+                X, y, test_size=0.3, random_state=42, stratify=y)
+            binary_vectors = []
+            for i in range(self.k):
+                results = rsfs.RSFS(data_train, data_test, label_train, label_test, self.rsfs_params)
+                selected_features = results['F_RSFS']
+                binary_vector = np.zeros(X.shape[1], dtype=int)
+                binary_vector[selected_features] = 1
+                binary_vectors.append(binary_vector)
+
+                print(f"\tRSFS Subset {i + 1}/{self.k}")
+
+            rotation_matrix = np.vstack(binary_vectors).T
+            rotate_train = np.dot(X, rotation_matrix)
+            print(rotate_train.shape)
+            rf.fit(rotate_train, y)
+            self.rf_ensemble.append((rf, rotation_matrix))
+            print(f"estimator {a + 1}/{self.n_estimators}")
+
+    def predict(self, X):
+        ensemble_predictions = []
+
+        for rf, rotation_matrix in self.rf_ensemble:
+            rotate_X = np.dot(X, rotation_matrix)
+            predictions = rf.predict(rotate_X)  # Make predictions on the rotated data
+            print(predictions)
+            ensemble_predictions.append(predictions)
+        ensemble_predictions = np.array(ensemble_predictions)
+        mode_predictions = mode(ensemble_predictions, axis=0).mode
+        binary_predictions = mode_predictions.ravel()
+
+        return binary_predictions
+
+
