@@ -64,8 +64,8 @@ class RotationForestClassifier(BaseEstimator, ClassifierMixin):
             print(predictions)
             ensemble_predictions.append(predictions)
         ensemble_predictions = np.array(ensemble_predictions)
-        mode_predictions = mode(ensemble_predictions, axis=0).mode
-        binary_predictions = mode_predictions.ravel()
+        mean_predictions = np.mean(ensemble_predictions, axis=0)
+        binary_predictions = np.where(mean_predictions < 0.3, 0, 1)
 
         return binary_predictions
 
