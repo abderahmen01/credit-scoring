@@ -23,10 +23,10 @@ class RotationForestClassifier(BaseEstimator, ClassifierMixin):
                 },
                 'Dummy feats': 25,
                 'delta': 0.05,
-                'maxiters': 9900,
+                'maxiters': 5000,
                 'fn': 'sqrt',
                 'cutoff': 0.99,
-                'Threshold': 300,
+                'Threshold': 50,
             },
             'Verbose': 1
         }
